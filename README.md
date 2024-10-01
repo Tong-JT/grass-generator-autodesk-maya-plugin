@@ -49,3 +49,9 @@ Customise popup and appearance as needed.
 - Set Density: Enter the number of grass blades you want to generate and choose how the density is calculated.
 - Generate Grass: Click the "Submit" button to create the grass blades on the selected surface.
 - Manage Follicles: Use the post-generation tools to delete follicles as needed.
+
+### History
+*Developed as a personal project - derived from a project in 'The MEL Companion: Maya Scripting for 3D Artists (2003) - David Stripinis'.*
+
+- Created: 12th July 2024
+- Completed: 18th August 2024
