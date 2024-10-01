@@ -1,6 +1,11 @@
 import maya.cmds as cmds
 import random
 
+'''
+The grass class controls the creation of a single grass blade, and sets the parameters for the height, bend, curve
+width and rotation.
+Child classes have different parameters.
+'''
 class Grass:
     def __init__(self):
         self.bladeHeight
@@ -9,9 +14,8 @@ class Grass:
         self.bladeWidth = random.uniform(0.02,0.04)
         self.randomRotation = random.uniform(0,360)
         
-
-    # Generate individual grass blade
     def makeGrassBlade(self):
+        # Method for controlling the creation of individual grass blades
         # Create blade
         self.blade = cmds.polyCone(radius = self.bladeWidth, height = self.bladeHeight, subdivisionsX = 3, subdivisionsY = 8)
         cmds.constructionHistory( tgl=False )
@@ -32,13 +36,14 @@ class Grass:
         cmds.select(bendHandle, add=True)
         cmds.delete(constructionHistory=True)
         cmds.makeIdentity(apply=True, t=True, r=True, s=True, n=False)
-
+        
         return self.blade
 
     def getBlade(self):
         return self.bladeHeight
     
 
+# Child classes - Mowed, Short, Medium, Long
 
 class MowedGrass(Grass):    
     def __init__(self):
@@ -47,7 +52,6 @@ class MowedGrass(Grass):
         self.curveHeight = 0.15
         Grass.__init__(self)
         
-
 class ShortGrass(Grass):
     def __init__(self):
         self.bladeHeight = random.uniform(0.7,1)

@@ -4,6 +4,7 @@ import os
 import sys
 import maya.cmds as cmds
 
+# Maya only reads files within approved paths. This ensures that the current directory can be read by Maya
 relativePath = "/GrassGenerator"
 for path in sys.path:
     isExist = os.path.exists(path + relativePath)
@@ -12,6 +13,9 @@ for path in sys.path:
 
 from grass import *
 
+
+# The UI class controls the graphical interface that the user interacts with, and the logic associated with the
+# interface.
 class GrassUI(QtWidgets.QDialog):
 
     def __init__(self):
@@ -21,6 +25,7 @@ class GrassUI(QtWidgets.QDialog):
         self.createWidgets()
 
     def createWidgets(self):
+        # Creates all GUI components using PyQt. Values are called when buttons are pressed.
         self.grassGroup = QtWidgets.QButtonGroup()
         grassTypeBox = QtWidgets.QVBoxLayout()
         grassExplain = QtWidgets.QLabel("Select grass length:")
@@ -109,11 +114,13 @@ class GrassUI(QtWidgets.QDialog):
         mainLayout.addLayout(postEditBox)
 
     def updateSliders(self):
+        # Updates sliders and labels which are currently selected.
         for rb, slider in self.rbSliderMap.items():
             slider.setEnabled(rb.isChecked())
         self.slidersHundredPercent()
 
     def slidersHundredPercent(self):
+        # Ensures all active sliders add up to 100%.
         sliders = [slider for button, slider in self.rbSliderMap.items() if button.isChecked()]
         if not sliders:
             return
@@ -133,12 +140,16 @@ class GrassUI(QtWidgets.QDialog):
             self.updateLabel(slider)
 
     def updateLabel(self, slider):
+        # Update number beside the slider.
         if slider in self.sliderLabelMap:
             label = self.sliderLabelMap[slider]
             value = slider.value()
             label.setText(f'    {value:.0f}%')
 
     def getPlaneBoundaries(self, planeName):
+        # Get width and height of the plane, based on the bounding box. (y is the vertical height, x and z are parallel
+        # to the floor plane).
+
         if not cmds.objExists(planeName):
             raise ValueError(f"{planeName} does not exist.")
 
@@ -150,14 +161,10 @@ class GrassUI(QtWidgets.QDialog):
         return (width, height)
 
     def grassChoice(self):
-        planeName=cmds.ls(selection=True)
-
-        percentage = int(self.grassNumInput.text()) if self.grassNumInput.text().isdigit() else 0
-        if percentage == 0:
-            return
-        
+        # Determines number of grassblades to generate based on the number inputted by user, the chosen density
+        # type and percentage of total grass per grass type.
+        planeName = cmds.ls(selection=True)
         numberRun = self.getSelectedDensity(planeName)
-        
         grassList = [button for button in self.grassGroup.buttons() if button.isChecked()]
 
         for selectedGrass in grassList:
@@ -167,6 +174,7 @@ class GrassUI(QtWidgets.QDialog):
             self.generateMultiple(selectedGrass.text(), typeDensity, planeName)
 
     def getSelectedDensity(self, planeName):
+        # User enters a number, then chooses how density is calculated.
         numInput = int(self.grassNumInput.text()) if self.grassNumInput.text().isdigit() else 0
         if numInput == 0:
             return
@@ -175,27 +183,30 @@ class GrassUI(QtWidgets.QDialog):
         if not selectedRadioButton:
             return None
 
+        # The number entered is the number of grass blades generated
         selectedDensityText = selectedRadioButton.text()
         if selectedDensityText == "Absolute":
-            print(numInput)
             return numInput
         
+        # The number entered is multiplied by the surface area of the plane
         elif selectedDensityText == "Density (global grid)":
             width, height = self.getPlaneBoundaries(planeName[0])
             surfaceArea = int(width*height)
             densityGlobal = numInput*surfaceArea
-            print(surfaceArea)
             return densityGlobal
         
+        # The number entered is multiplied by number of faces on plane
         elif selectedDensityText == "Density (subdivision)":
             cmds.select(planeName)
             faces = cmds.polyListComponentConversion(toFace=True)
             faceCount = len(cmds.ls(faces, fl=True))
             densityFace = numInput*faceCount
-            print(faceCount)
             return densityFace
 
     def createGrass(self, choice):
+        # Instantiate grass type.
+        # Note: Switch-case not supported in Maya, as Maya uses Python 3.7, and switch case was not available
+        # until Python 3.10. Switch case is available with MEL
         
         if choice == "Mowed":
             new = MowedGrass()
@@ -209,6 +220,8 @@ class GrassUI(QtWidgets.QDialog):
         return new
 
     def createFollicle(self, surface):
+        # Creates a follicle on surface. Sets up connections between follicle and surface to enable it to
+        # follow surface's deformations.
         surfaceName = surface[0]    
         folShape = cmds.createNode("follicle")
         fol = cmds.listRelatives(folShape, f=True, parent=True)[0]
@@ -222,17 +235,16 @@ class GrassUI(QtWidgets.QDialog):
         return (folShape, fol)
 
     def generateMultiple(self, grassType, num, planeName):
+        # Creates multiple grassblades, connects them to follicles, then randomises distribution throughout
+        # the plane.
         width, height = self.getPlaneBoundaries(planeName[0])
         surfaceArea = int(width*height)
         shader = self.createLambertShader()
-        print(f"Generating {num} blades of {grassType}. Total surface area: {surfaceArea}")
         
         for i in range(num):
             grassIteration = self.createGrass(grassType)
-            print(grassIteration)
             grass = grassIteration.makeGrassBlade()
             grassHeight = grassIteration.getBlade()
-            print(grass[0])
 
             cmds.select(grass[0])
             cmds.hyperShade(assign=shader)
@@ -249,6 +261,8 @@ class GrassUI(QtWidgets.QDialog):
             cmds.parent(grass[0], fol)
 
     def createLambertShader(self):
+        # Creates shaders for the grass bladers, a light green lambert with a mild gradient.
+        # Visual output of shaders must be manually enabled before or after running script.
         shader = cmds.shadingNode('lambert', asShader=True)
         cmds.sets(renderable=True, noSurfaceShader=True, empty=True, name=shader + '_SG')
         cmds.setAttr(shader + '.color', 0.45, 0.96, 0.42, type='double3')
@@ -265,6 +279,7 @@ class GrassUI(QtWidgets.QDialog):
         return shader
 
     def deleteFollicles(self):
+        # Logic for follicle deletion. User may manually select follicles to delete or delete all at once.
         selectedDeleteButton = self.deleteGroup.checkedButton()
 
         if selectedDeleteButton is None:
@@ -273,6 +288,7 @@ class GrassUI(QtWidgets.QDialog):
 
         selectedDeleteText = selectedDeleteButton.text()
         if selectedDeleteText == "Delete selected":
+            # Of selected objects, the object type 'follicle' is selected for deletion.
             selectedObjects = cmds.ls(selection=True)
             follicles = []
             for obj in selectedObjects:
@@ -286,14 +302,14 @@ class GrassUI(QtWidgets.QDialog):
                             follicles.append(child)
 
         elif selectedDeleteText == "Delete all":
+            # All 'follicle' types in scene are selected.
             follicles = cmds.ls(type='follicle')
-            print(follicles)
         
         for follicleShape in follicles:
+            # For-in deletes the selected follicles, regardless of whether some or all were selected.
             follicleTransform = cmds.listRelatives(follicleShape, parent=True)[0]
             children = cmds.listRelatives(follicleTransform, children=True) or []
             for child in children:
-                print(child)
                 if cmds.nodeType(child) == 'transform':
                     cmds.parent(child, world=True)
                 else:
