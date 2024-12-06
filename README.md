@@ -17,7 +17,7 @@ A tool for generating grass blades in a Maya scene. Allows users to customize gr
 
 Clone this repository
 ```
-git clone https://github.com/Tong-JT/GrassGenerator.git
+git clone https://github.com/Tong-JT/grass-generator-autodesk-maya-plugin.git
 ```
 
 Add the GrassGenerator directory to your Maya Python path (script will automatically add relative path)
